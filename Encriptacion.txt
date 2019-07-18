@@ -1,0 +1,45 @@
+USE Agenda;  
+GO  
+
+CREATE CERTIFICATE EncPass 
+   WITH SUBJECT = 'Pass db';  
+GO  
+
+CREATE SYMMETRIC KEY SSN_Key_01  
+    WITH ALGORITHM = AES_256  
+    ENCRYPTION BY CERTIFICATE EncPass;  
+GO  
+
+USE [Agenda];  
+GO  
+
+-- Create a column in which to store the encrypted data.  
+ALTER TABLE dbo.Users  
+    ADD EncryptedPass varbinary(128);   
+GO  
+
+-- Open the symmetric key with which to encrypt the data.  
+OPEN SYMMETRIC KEY SSN_Key_01  
+   DECRYPTION BY CERTIFICATE EncPass;  
+
+-- Encrypt the value in column Password with symmetric   
+-- key SSN_Key_01. Save the result in column EncryptedPass.  
+UPDATE dbo.Users  
+SET EncryptedPass = EncryptByKey(Key_GUID('SSN_Key_01'), Password);  
+GO  
+
+-- Verify the encryption.  
+-- First, open the symmetric key with which to decrypt the data.  
+OPEN SYMMETRIC KEY SSN_Key_01  
+   DECRYPTION BY CERTIFICATE EncPass;  
+GO  
+
+-- Now list the original Pass the encrypted Pass, and the   
+-- decrypted ciphertext. If the decryption worked, the original  
+-- and the decrypted ID will match.  
+SELECT Password, Encryptedpass   
+    AS 'Encrypted Pass',  
+    CONVERT(nvarchar, DecryptByKey(EncryptedPass))   
+    AS 'DecryptedPass'  
+    FROM dbo.Users;  
+GO  
